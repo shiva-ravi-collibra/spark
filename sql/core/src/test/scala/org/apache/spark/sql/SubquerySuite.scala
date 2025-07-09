@@ -2212,6 +2212,24 @@ class SubquerySuite extends QueryTest
     }
   }
 
+  test("SPARK-49819: Do not collapse projects with exist subqueries") {
+    withTempView("v") {
+      Seq((0, 1), (1, 2)).toDF("c1", "c2").createOrReplaceTempView("v")
+      checkAnswer(
+        sql("""
+              |SELECT m, CASE WHEN EXISTS (SELECT SUM(c2) FROM v WHERE c1 = m) THEN 1 ELSE 0 END
+              |FROM (SELECT MIN(c2) AS m FROM v)
+              |""".stripMargin),
+        Row(1, 1) :: Nil)
+      checkAnswer(
+        sql("""
+              |SELECT c, CASE WHEN EXISTS (SELECT SUM(c2) FROM v WHERE c1 = c) THEN 1 ELSE 0 END
+              |FROM (SELECT c1 AS c FROM v GROUP BY c1)
+              |""".stripMargin),
+        Row(0, 1) :: Row(1, 1) :: Nil)
+    }
+  }
+
   test("SPARK-37199: deterministic in QueryPlan considers subquery") {
     val deterministicQueryPlan = sql("select (select 1 as b) as b")
       .queryExecution.executedPlan
@@ -2780,6 +2798,36 @@ class SubquerySuite extends QueryTest
           |)""".stripMargin
       val df3 = sql(query3)
       checkAnswer(df3, Row(7))
+    }
+  }
+
+  test("SPARK-50091: Handle aggregates in left-hand operand of IN-subquery") {
+    withView("v1", "v2") {
+      Seq((1, 2, 2), (1, 5, 3), (2, 0, 4), (3, 7, 7), (3, 8, 8))
+        .toDF("c1", "c2", "c3")
+        .createOrReplaceTempView("v1")
+      Seq((1, 2, 2), (1, 3, 3), (2, 2, 4), (3, 7, 7), (3, 1, 1))
+        .toDF("col1", "col2", "col3")
+        .createOrReplaceTempView("v2")
+
+      val df1 = sql("SELECT col1, SUM(col2) IN (SELECT c3 FROM v1) FROM v2 GROUP BY col1")
+      checkAnswer(df1,
+        Row(1, false) :: Row(2, true) :: Row(3, true) :: Nil)
+
+      val df2 = sql("""SELECT
+                      |  col1,
+                      |  SUM(col2) IN (SELECT c3 FROM v1) and SUM(col3) IN (SELECT c2 FROM v1) AS x
+                      |FROM v2 GROUP BY col1
+                      |ORDER BY col1""".stripMargin)
+      checkAnswer(df2,
+        Row(1, false) :: Row(2, false) :: Row(3, true) :: Nil)
+
+      val df3 = sql("""SELECT col1, (SUM(col2), SUM(col3)) IN (SELECT c3, c2 FROM v1) AS x
+                      |FROM v2
+                      |GROUP BY col1
+                      |ORDER BY col1""".stripMargin)
+      checkAnswer(df3,
+        Row(1, false) :: Row(2, false) :: Row(3, true) :: Nil)
     }
   }
 }

@@ -98,7 +98,9 @@ object OffsetSeqMetadata extends Logging {
     SHUFFLE_PARTITIONS, STATE_STORE_PROVIDER_CLASS, STREAMING_MULTIPLE_WATERMARK_POLICY,
     FLATMAPGROUPSWITHSTATE_STATE_FORMAT_VERSION, STREAMING_AGGREGATION_STATE_FORMAT_VERSION,
     STREAMING_JOIN_STATE_FORMAT_VERSION, STATE_STORE_COMPRESSION_CODEC,
-    STATE_STORE_ROCKSDB_FORMAT_VERSION, STATEFUL_OPERATOR_USE_STRICT_DISTRIBUTION)
+    STATE_STORE_ROCKSDB_FORMAT_VERSION, STATEFUL_OPERATOR_USE_STRICT_DISTRIBUTION,
+    PRUNE_FILTERS_CAN_PRUNE_STREAMING_SUBPLAN
+  )
 
   /**
    * Default values of relevant configurations that are used for backward compatibility.
@@ -119,7 +121,8 @@ object OffsetSeqMetadata extends Logging {
     STREAMING_JOIN_STATE_FORMAT_VERSION.key ->
       SymmetricHashJoinStateManager.legacyVersion.toString,
     STATE_STORE_COMPRESSION_CODEC.key -> "lz4",
-    STATEFUL_OPERATOR_USE_STRICT_DISTRIBUTION.key -> "false"
+    STATEFUL_OPERATOR_USE_STRICT_DISTRIBUTION.key -> "false",
+    PRUNE_FILTERS_CAN_PRUNE_STREAMING_SUBPLAN.key -> "true"
   )
 
   def apply(json: String): OffsetSeqMetadata = Serialization.read[OffsetSeqMetadata](json)
@@ -166,6 +169,17 @@ object OffsetSeqMetadata extends Logging {
 
           }
       }
+    }
+
+    // SPARK-51187: This incorrect config is not added in the relevantSQLConfs, but the
+    // metadata in the offset log may have this if the batch ran from Spark 3.5.4.
+    // We need to pick the value from the metadata and set it in the new config.
+    // This also leads the further batches to have a correct config in the offset log.
+    metadata.conf.get("spark.databricks.sql.optimizer.pruneFiltersCanPruneStreamingSubplan") match {
+      case Some(value) =>
+        sessionConf.set(PRUNE_FILTERS_CAN_PRUNE_STREAMING_SUBPLAN.key, value)
+
+      case _ =>
     }
   }
 }

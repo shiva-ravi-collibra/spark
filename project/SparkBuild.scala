@@ -469,8 +469,7 @@ object SparkBuild extends PomBuild {
   /* Protobuf settings */
   enable(SparkProtobuf.settings)(protobuf)
 
-  // SPARK-14738 - Remove docker tests from main Spark build
-  // enable(DockerIntegrationTests.settings)(dockerIntegrationTests)
+  enable(DockerIntegrationTests.settings)(dockerIntegrationTests)
 
   if (!profiles.contains("volcano")) {
     enable(Volcano.settings)(kubernetes)
@@ -1047,7 +1046,7 @@ object KubernetesIntegrationTests {
         val rDockerFile = sys.props.getOrElse("spark.kubernetes.test.rDockerFile",
             s"$bindingsDir/R/Dockerfile")
         val extraOptions = if (javaImageTag.isDefined) {
-          Seq("-b", s"java_image_tag=$javaImageTag")
+          Seq("-b", s"java_image_tag=${javaImageTag.get}")
         } else {
           Seq("-f", s"$dockerFile")
         }
@@ -1104,7 +1103,8 @@ object DependencyOverrides {
     dependencyOverrides += "com.google.guava" % "guava" % guavaVersion,
     dependencyOverrides += "xerces" % "xercesImpl" % "2.12.2",
     dependencyOverrides += "jline" % "jline" % "2.14.6",
-    dependencyOverrides += "org.apache.avro" % "avro" % "1.11.2")
+    dependencyOverrides += "org.apache.avro" % "avro" % "1.11.4",
+    dependencyOverrides += "org.apache.commons" % "commons-compress" % "1.23.0")
 }
 
 /**
@@ -1600,6 +1600,7 @@ object TestSettings {
     (Test / javaOptions) += "-Dspark.ui.enabled=false",
     (Test / javaOptions) += "-Dspark.ui.showConsoleProgress=false",
     (Test / javaOptions) += "-Dspark.unsafe.exceptionOnMemoryLeak=true",
+    (Test / javaOptions) += "-Dspark.hadoop.hadoop.caller.context.enabled=true",
     (Test / javaOptions) += "-Dhive.conf.validation=false",
     (Test / javaOptions) += "-Dsun.io.serialization.extendedDebugInfo=false",
     (Test / javaOptions) += "-Dderby.system.durability=test",

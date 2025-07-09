@@ -1959,7 +1959,7 @@ Apart from these, the following properties are also available, and may be useful
 </tr>
 <tr>
   <td><code>spark.storage.replication.proactive</code></td>
-  <td>false</td>
+  <td>true</td>
   <td>
     Enables proactive block replication for RDD blocks. Cached RDD block replicas lost due to
     executor failures are replenished if there are any existing available replicas. This tries
@@ -3280,6 +3280,30 @@ Expression types in proto.</td>
 <code>org.apache.spark.sql.connect.plugin.CommandPlugin</code> to support custom
 Command types in proto.</td>
   <td>3.4.0</td>
+</tr>
+<tr>
+  <td><code>spark.connect.jvmStacktrace.maxSize</code></td>
+  <td>
+    2048
+  </td>
+  <td>Sets the maximum stack trace size to display when `spark.sql.pyspark.jvmStacktrace.enabled` is true.</td>
+  <td>3.5.0</td>
+</tr>
+<tr>
+  <td><code>spark.sql.connect.ui.retainedSessions</code></td>
+  <td>
+    200
+  </td>
+  <td>The number of client sessions kept in the Spark Connect UI history.</td>
+  <td>3.5.0</td>
+</tr>
+<tr>
+  <td><code>spark.sql.connect.ui.retainedStatements</code></td>
+  <td>
+    200
+  </td>
+  <td>The number of statements kept in the Spark Connect UI history.</td>
+  <td>3.5.0</td>
 </tr>
 </table>
 
